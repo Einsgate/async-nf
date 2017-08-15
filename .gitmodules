@@ -1,0 +1,4 @@
+[submodule "seastar"]
+	path = seastar
+	url = https://github.com/duanjp8617/seastar.git
+	branch = hack
