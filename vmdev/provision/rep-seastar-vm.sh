@@ -2,7 +2,7 @@
 
 # Make sure that the baseImg and destImgDir exist on this machine.
 # Make sure that the baseImg is a seastar develop machine
-baseImg="/data/important-do-not-touch/ubuntu-base-img/seastar-dev"
+baseImg="/data/important-do-not-touch/ubuntu-base-img/seastar-base"
 destImgDir="/data/important-do-not-touch/vm-imgs/"
 nCpus=10
 sizeMem=16384

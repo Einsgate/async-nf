@@ -37,4 +37,4 @@ sudo virt-install \
 # Now copy init-script.sh file to the created virtual machine
 # and install seastar development environment.
 # Once finished, the created virtual machine image could be used as
-# seastar-dev image.
+# seastar-base image.
