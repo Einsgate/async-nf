@@ -1,7 +1,8 @@
 #!/bin/sh
 
 # Make sure that the baseImg and destImgDir exist on this machine.
-baseImg="/data/important-do-not-touch/ubuntu-base-img/ubuntu-16.04.qcow2"
+# Make sure that the baseImg is a seastar develop machine
+baseImg="/data/important-do-not-touch/ubuntu-base-img/seastar-dev"
 destImgDir="/data/important-do-not-touch/vm-imgs/"
 nCpus=10
 sizeMem=16384
@@ -34,7 +35,4 @@ sudo virt-install \
      --cpu host \
      --rng=/dev/random
 
-# Now copy init-script.sh file to the created virtual machine
-# and install seastar development environment.
-# Once finished, the created virtual machine image could be used as
-# seastar-dev image.
+# Now we can directly work on Seastar
