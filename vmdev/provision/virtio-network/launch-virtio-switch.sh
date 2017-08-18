@@ -3,7 +3,7 @@
 DPDK_DIR=/home/net/async-nf/vmdev/dpdk-build/dpdk
 CORE_MASK=0x00007
 
-$DPDK_DIR/examples/vhost/vhost/build/vhost-switch \
+sudo $DPDK_DIR/examples/vhost/vhost/build/vhost-switch \
 -c $CORE_MASK \
 -n 4 \
 --socket-mem 2048 \
