@@ -30,7 +30,7 @@ round-robined by all the worker threads.
 
    4.2 Add
 <qemu:commandline>
-  <qemu:arg value='-chardev socket,id=char0,path=/path-to-vhost-net'/>
+  <qemu:arg value='-chardev socket,id=char0,path=/home/net/asyn-nf/provision/virtio-network/vhost-net1'/>
   <qemu:arg value='-netdev type=vhostuser,id=netdev0,chardev=char0,vhostforce'/>
   <qemu:arg value='-device virtio-netpci,netdev=netdev0,mac=52:54:00:00:00:01'/>
 </qemu:commandline>
