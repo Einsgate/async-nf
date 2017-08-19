@@ -27,7 +27,7 @@ sudo virt-install \
      --name $1 \
      --vcpus $nCpus \
      --memory $sizeMem \
-     --disk path=$destImgDir$1,format=qcow2,bus=virtio \
+     --disk path=$destImgDir$1,size=20,format=qcow2,bus=virtio \
      --accelerate \
      --network=network:default,model=virtio \
      --serial pty \
