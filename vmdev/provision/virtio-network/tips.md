@@ -4,7 +4,7 @@ Several references for creating a DPDK virtio network.
 
 2. Use http://fast.dpdk.org/doc/perf/DPDK_17_02_Intel_virtio_performance_report.pdf as the basic setup reference.
 
-3. Launch vhost-switch:
+3. Launch vhost-switch, we provide a scipt for launching vhost-switch
 
  /path-to-dpdk/examples/vhost \
  -c 0x1c00 \
@@ -30,7 +30,23 @@ round-robined by all the worker threads.
 
    4.2 Add
 <qemu:commandline>
-  <qemu:arg value='-chardev socket,id=char0,path=/home/net/asyn-nf/provision/virtio-network/vhost-net1'/>
-  <qemu:arg value='-netdev type=vhostuser,id=netdev0,chardev=char0,vhostforce'/>
-  <qemu:arg value='-device virtio-netpci,netdev=netdev0,mac=52:54:00:00:00:01'/>
+  <qemu:arg value='-chardev'/>
+  <qemu:arg value='socket,id=char0,path=/home/net/asyn-nf/provision/virtio-network/vhost-net1'/>
+  <qemu:arg value='-netdev'/>
+  <qemu:arg value='type=vhost-user,id=netdev0,chardev=char0,vhostforce'/>
+  <qemu:arg value='-device'/>
+  <qemu:arg value='virtio-net-pci,netdev=netdev0,mac=52:54:00:00:00:01'/>
 </qemu:commandline>
+
+5. Change the user and group to booth root for libvirt.
+Reference: http://docs.openvswitch.org/en/latest/topics/dpdk/vhost-user/
+
+This is enabled by:
+
+   5.1 open /etc/libvirt/qemu.conf, add user = "root" and  group = "root"
+   5.2 Install aa-complain by: apt-get install apparmor-utils
+   5.3 Put libvirtb and vms into complain mode:
+       sudo aa-complain /usr/sbin/libvirtd
+       sudo aa-complain /etc/apparmor.d/libvirt/*
+
+6. Then we can launch the VM.
