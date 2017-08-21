@@ -1,0 +1,71 @@
+\section{Introduction}
+
+In recent years, the research community has witnessed the quick development of
+Network Function Virtualization (NFV). NFV aims to move away from hardware-based
+network functions (NFs) and run software NFs in virtualized environment such as
+Virtual Machines (VMs) and containers. NFV greatly simplifies the deployment of
+NFs on critical network paths, as it no longer requires the network operators to
+maintain proprietary hardware NFs.
+
+%
+Over the past years, the performance \cite{dpdk, rizzo2012netmap,
+  martins2014clickos, hwang2015netvm}, scalability \cite{palkar2015e2} and
+programmability \cite{199352, 201546} of NFV have all been greatly
+improved. However, the core of NFV still lies in how to efficiently implement NF
+software. Even though there are many research work \cite{199352, 201546} discussing
+advancements in implementing NF software, these works are all done in an ad-hoc
+manner, i.e. the advancement of these works are made using a wide range of tools
+and methods, lacking a systematic framework to capture all of these
+advancements.
+
+On the other hand, there are a wide range of NFs that must be implemented for
+NFV, such as firewall, NAT, asset monitor and IDS. These NFs operate on
+different layers, i.e. L3-L4 for firewall and NAT, L5 for asset monitor and
+IDS. Besides, NFs sometimes require more functionalities than just packet
+processing, including file logging and reliable communication with a
+cluster. File logging needs to deal with file system call. Reliable
+communication needs a user-level TCP/IP stack. Correctly integrating
+these constructs with packet processing pipeline is not a trivial task to do,
+especially when considering the sequential nature of poll-based packet
+processing. 
+
+We argue that the above-mentioned problems can be well handled by proper
+software abstraction and the recent advancement in high-performance server side
+programming. 
+
+To effectively integrate a wide range of NFs using a systematic framework, we
+aim to rely on a widely-known asynchronous programming abstraction called
+\textit{promise} \cite{vouillon2008lwt}. The promise abstraction has the two
+crucial benefits for implementing future NFs. First, the promise abstraction is
+expressive enough for implementing a wide range of NFs, from simple packet
+processing application like firewall and NAT, to complicated NFs that analyze
+the payload of a flow like asset monitor and IDS. Second, the promise
+abstraction allows the programmer to write NF code in a synchronous style; the
+complexity of calling asynchronous callbacks are completely hidden by the
+promise abstraction.
+
+To handle the advanced functionalities that are required by NFs, we leverage the
+recent advancement in server-side programming, called Seastar \cite{seastar}. Seastar
+is fully compatible with the promise abstraction. It provides high-speed
+DMA-based file I/O and a user-level TCP/IP stack that is fully compliant with
+the promise abstraction, making it a perfect base building block for future NF
+software.
+
+In this paper, we propose AsyncNF, which is a framework for building and porting
+a wide range of NF softwares. AsyncNF provides an efficient framework for writing
+NF software based on promise abstraction. To demonstrate the usability of
+AsyncNF, we use AsyncNF to implement a wide range of NFs, including a
+reimplementation of NetBricks, a high-speed port of PRADs asset monitor, an NF
+replication scheme that does not rely on rolling-back and a simple port of
+mOS. All the four NF software achieve good performance and easy
+programmability.
+
+The contributions of the paper are listed as follow:
+
+First, we propose a framework for building NF software using promise
+abstraction. The framework is capable of implementing a wide-range of NFs with
+advanced functionality such as DMA-based file logging and reliable
+communication.
+
+Second, we perform four case studies using the proposed framework, demonstrating
+the effectiveness of the proposed framework.
