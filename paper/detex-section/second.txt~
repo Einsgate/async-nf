@@ -1,0 +1,102 @@
+Rollback Recovery for Middleboxes
+
+FTMB and Non-determinism in Multi-threaded NF
+
+FTMB sherry2015rollback is the state-of-art middlebox replication
+strategy. FTMB regularly creates a checkpoint for the primary NF instance and
+generates a series of packet access logs. In the case of primary NF instance
+failure, FTMB recover the primary NF instance by rollback: a new primary NF
+instance is re-created based on the latest checkpoint and the state of the new
+primary NF instance is recovered by replaying the packet access log. 
+
+
+FTMB simply rejected the idea to keep the primary NF instance and the backup NF
+instance synchronized, due to the exsitence of shared variables and
+non-determinism caused by concurrently accessing shared variables.
+
+A multi-threaded NF software may maintain several shared variables, protected by
+locks. Accessing these shared variables from multiple worker threads may result in
+non-determinism: when the same input sequence are fed into two identical
+programs, they may fail to generate the same output.
+
+For instance, the NF software maintain a shared variable . There are two NF
+instances running the same NF software. Both NF instances are configured with
+two worker threads  and . Then, two identical packets  and 
+are concurrently fed into worker threads  and  respectively, on both
+of the two NF instances. Because the two worker threads run in parrallel, it is
+impossible to guarantee the order for accessing the shared variable . We
+might end-up with the following situation: on the first NF instance,  first
+accesses  when processing , while on the second NF instance,  first
+accesses  when processing . This situation may render the two identical
+NF instances to be in different states.
+
+Due to the non-determinism, the authors of FTMB sherry2015rollback reject
+the design to keep primary and backup synchronized: without tagging the packet
+processing order from the master instance, it is impossible to keep the backup
+instance synchronized. Even if master instance correctly tags the packet
+processing order and sends these tags to the backup instance, the worker threads
+on backup instance must strictly follow the packet processing order when
+accessing the shared variable: before accessing a shared variable, the worker
+thread must keep spinning to wait for its turn to access the shared variable,
+compromising the performance of the backup instance.
+
+Execution Model of FTMB
+
+FTMB uses rollback recovery, which could be summarized as follows: the primary
+instance create a Packet Access Log(PAL for short) whenever accessing a
+shared variable. For each processed packet, the primary instance sends the
+processed packet, together with all the PALs generated during processing this
+packet, to the backup instance over a reliable communication channel. The backup
+instance in FTMB is actually referred to as a Output Logger. The output
+logger stores the PALs for rollback recovery and release the processed packet to
+the outside. In the meantime, since the primary instance runs in a virtual
+machine, the primary instance also sends a checkpoint of its virtual machine
+state to the output logger. The output logger saves the current checkpoint,
+discards the previous checkpoint and all the PALs received since the previous
+checkpoint.
+
+If the primary instance crashes, the primary instance is recovered as follow:
+the output logger uses the saved checkpoint of the primary instance to create a
+new virtual machine. Then the output logger sends the PALs and the input packets
+that trigger the generation of these PALs to the new primary instance for
+replay. The primary instance resumes working after it finishes replaying all the
+PALs.
+
+Pros and Cons of FTMB
+
+Pros:
+
+Good system performance. FTMB is carefully designed not to introduce
+small overhead when generating PALs. The replicated NF in FTMB is able to
+processes millions of packets per second.
+
+Fast recovery time. Depending on how often the primary instance is
+checkpointed, the recovery time in the case of primary failure can be as small
+as 20 milliseconds.
+
+Passive Operation. There is no dedicated backup instance in
+FTMB. The output logger is capable of relicating multiple primary instances.
+
+Cons:
+
+Packet processing latency is increased during checkpoint. When doing
+checkpoint for primary instance, the primary instance is significantly slowed
+down, resulting in packet processing latency up to several milliseconds. This
+leads to a huge jitter in the network RTT, which may be devastating to some
+important applications such as VoIP and on-line gaming.
+
+The tradeoff between packet latency and checkpoint frequency. An
+important parameter to tune in FTMB is how frequently should the primary
+instance be checkpointed. If the primary instance is frequently checkpointed,
+then the recovery time would be faster, but each time when checkpoint is
+triggered, FTMB adds huge packet processing latency, sometimes up to several
+milliseconds. If the primary instance is not frequently checkpointed, then the
+output logger needs a huge buffer to buffer input packets and PAL, the recovery
+time is also prolonged.
+
+Lacking An Open-souce Solution. FTMB is a very complicated system,
+involving several critical system components that are non-trivial to
+engineer. However, FTMB is not open-sourced and therefore limititing its further
+application in both academia and industry.
+
+

@@ -1,0 +1,129 @@
+Middlebox Recovery without Rolling Back
+
+On contrary to FTMB, we aim to provide a new middlebox replication strategy
+which keeps both the primary and the backup instances in synchronization. This
+replication strategy directly gives the same input packet stream to both the
+primary instance and the backup instance, our new architecture is able to keep
+both of the two instances in synchronization.
+
+Using this stategy, there is no need to rollback the backup instance when the
+primary instance fail. This strategy minimizes the recovery time and eliminates
+the prolonged packet processing delay when checkpointing the primary instance.
+
+To tackle the challenge of keeping both the primary instance and the backup
+instance in synchronization, one might resolve to deterministic scheduling
+. However, the overhead caused by deterministic scheduling is way too
+high for NF software, as a typical NF software needs to process millions of
+input packets every seconds. Instead, we solve the deterministic execution
+problem using a combination of coroutine and message passing.
+
+figure[!t]
+  subfigure[t]0.99
+    
+    section/overall.jpg
+    The basic setup.fig:overall
+  subfigure
+  subfigure[t]0.99
+    
+    section/primary.jpg
+    The execution flow on a primary instance.fig:primary
+  subfigure
+  subfigure[t]0.99
+    
+    section/backup.jpg
+    The execution flow on a backup instance.fig:backup
+  subfigure
+Work flow of how to keep both primary and backup in synchronization.
+fig:fig
+figure
+
+Basic Setup for Recovery without Rolling Back
+
+The basic setup is shown in figure fig:overall. We set up two identical NF
+instances. The two instances run the same NF software binary image and are
+configured with the same number of CPU cores.
+
+In fig:overall, the NF instance is configured with two worker threads
+( and ), which poll the NIC card for input packet. The shared variable
+is hosted on a dedicated thread .
+
+To access the shared variable hosted on , both  and  need to send
+a message for accessing the shared varaible to . After the shared variable
+is modified, another message is sent back to  or  to indicate the
+completion of shared variable modification.
+
+When the primary instance finishes processing the input packet, it forwards the
+input packet to the backup instance over a reliable communication channel. The
+backup instance processes the input packet again before releasing the
+packet. The packet processed by the backup instance is tagged with an execution
+order by the primary, so that the shared variable on the backup instance can
+process the input packet in the same sequence as the primary instance. This
+guarantees that the state on both the primary instance and the backup instance
+are always synchronized.
+
+Workflow on Primary Instance
+
+Figure fig:primary shows how worker thread  processes an input
+packet. The overall workflow is similar to a typical packet polling loop. The
+only exception is that when a shared variable is going to be accessed by 
+(step 3 in figure fig:primary), instead of directly acquiring the lock and
+update the shared variable,  sends the packet to  to update the shared
+varibale (step 4). When  receives this packet, the threads updates the
+shared variable (step 5), tags the packet with a sequence number (step 6) and
+sends the packet back to . When  receives this packet,  sends the
+tagged packet out to the backup instance over a reliable communication channel.
+
+The Sequence Number
+
+The sequence number tagged by  indicates a sequential accessing order to
+the shared variable. Using this sequence number, the backup instance can
+reliably re-produce the accessing order of the shared variable (to be discussed
+in section sec:backup). This ensures that the state of the primary and backup
+instances are always synchronized.
+
+Using Future and Promise to Cancel Thread Blocking
+
+The biggest problem of this workflow is that, after step 4 in figure
+fig:primary, worker thread  must block its execution and wait for the
+packet to come back from . This is unacceptable for a high-performance NF
+software.
+
+We tackle this problem using futures and promises in reactive
+programming. After step 4 in figure fig:primary is executed, we wrap the
+current thread context inside a future object.  can immediately starts processing
+other input packets. When the packet comes back to  after step
+6,  is able to re-construct the previous thread context using the
+corresponding future object. This efficiently eliminates thread blocking.
+
+The Reliable Communication Channel
+
+Due to the power of future and promise, a user-space TCP/IP stack could be
+integrated inside . The reliable communication channel is actually a TCP
+connection channel. This reliable communication channel is augmented with flow
+control and is more reliable than other specially-crafted reliable communication protocols. 
+
+ Workflow on Backup Instance
+sec:backup
+
+Figure fig:backup shows how worker thread  processes the output
+packet sent from the primary instance. The overall workflow is similar to that
+of the primary instance. However, when the packet is delivered to  to
+access the shared variable,  must check whether it has processed all the
+packets whose sequence number is smaller than the packet. Considering the case
+of figure fig:backup,  must wait for packet with sequence number 0
+first. If  has processed packet with sequence number 0,  can directly
+process packet with sequence number 1. Othwise,  should store packet with
+sequnece number 1 and wait for packet with sequnece number 0 to come.
+
+Since the order of how packets access the shared variable are well preserved,
+the backup instance and the primary instance have the same state.
+
+Recovery
+
+If the primary instance fails, the backup instance can become the primary
+instance immediately. The recovery time is basically decreased to zero.
+
+
+
+
+

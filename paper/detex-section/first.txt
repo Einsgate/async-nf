@@ -1,0 +1,224 @@
+Introduction
+
+In recent years, the research community has witnessed the quick development of
+network function virtualization (NFV). DPDK dpdk and Netmap
+rizzo2012netmap use kernel bypassing to speed up the performance of NF
+software. They have become the default libraries for implementing high-speed
+modern NF software. NFV management systems such as E2 palkar2015e2 are
+built to dynamically scale virtual instances running different NFs. NFs are
+augmented with fault tolerance sherry2015rollback and flow migration
+gember2014opennf to improve the failure resilience.
+
+However, despite all these advancements, a core problem is not well-solved by
+existing work: what should be the default programming abstraction for implementing NF
+software, so that the diverse requirements of NF software can be well-captured
+by this abstraction? To show the importance of this problem, let me first discuss
+the diversity of NF software.
+
+Diversity of NF Software
+
+
+Simple Packet Processing Program. Example NFs include
+firewall, NAT and load balancer. The word ``simple'' actually means that the way
+that these NFs manipulate packets is simple: they take an input packet,
+perform necessary packet transformation and book-keeping, then they release the
+packet to the outside. Taking NAT as an example. After receiving an input
+packet, NAT may update the connection status associated with the flow, then the
+NAT performs an address translation to substitute the IP address and port of the
+packet. Finally, NAT sends the packet out from the output port.
+
+These NFs can be effectively implemented inside a polling loop and can be
+seamlessly integrated with either DPDK or Netmap for maximum performance.
+
+NFs with Intensive File I/O. Example NFs include PRADs
+prads asset monitor and Snort snort intrusion detection system
+(IDS). For instance, PRADS is a passive real-time asset detection system, which
+listens to network traffic and logs important information on hosts and services
+it sees on the network. This information can be used to map the underlying
+network, letting network operators know what services and hosts are active, and
+can be used together with IDS/IPS setup for "event to application" correlation.
+
+Both PRADs and Snort can be ported to use DPDK to speed up packet processing
+201546. Even after porting to DPDK, both NFs fail to achieve 10Gbps line
+rate processing 201546. The primary reason for this undesirable number is
+due to logging. After porting to DPDK, the worker threads of both NFs keep
+polling for new packets and maintain CPU usage to 100. But when both NFs log
+important events, they have to access system calls related to file system
+processing, generating expensive context switches and compromising the packet
+processing throughput.
+
+These NFs can be accelerated using DPDK and Netmap, but they still need
+  to step into the kernel to log events to the files. NFs with intensive file
+I/O remain to be interesting phenomena in existing NFV research. People have
+strived to remove context switches associated with kernel networking stack by
+bypassing the kernel with DPDK, but they fail to remove the context switches
+associated with kernel file systems during logging.
+
+NFs with Reliable Communication to External Services.
+Example NFs include S-CSCF in IMS system 3gpp-ims and NFs that need to
+replicate their states on back NFs.
+
+S-CSCF is an important middlebox sitting at control plane of the IMS system. It
+processes SIP sip messages by contacting several external
+services. Taking the S-CSCF implementation of a famous open source IMS project
+Clearwater project-clearwater as an example, when processing SIP messages,
+S-CSCF needs to log SIP registration information on a Memcached memcached
+cluster and acquire user information by querying a dedicated storage server
+called Home Subscriber Server (HSS). The S-CSCF implementation of Clearwater
+uses kernel TCP/IP stack to carry out reliable communication to all the required
+external services, seriously limiting the maximum throughput that S-CSCF can
+achieve. Our experience with Clearwater shows that a single worker thread in
+S-CSCF can only process SIP messages with the bandwidth of 40Mb.
+
+FTMB sherry2015rollback is the state of art system for NF replication. It
+employs a primary-backup replication strategy. On the primary NF instance,
+after each packet is processed, the packet is passed to the backup over a
+reliable communication channel for replication. We can treat the replication
+process as communicating external services: each input packet processed by the
+primary instance must be reliably delivered to the backup instance. FTMB uses
+DPDK to speed up packet processing and implements its own reliable communication
+channel on top of DPDK. But the implementation detail of the reliable
+communicaton channel is omitted from the paper. It would be desirable to
+implement the reliable communication channel using a user-level TCP/IP stack
+like mTCP 179773, so that the performance of FTMB is stable (a
+handcrafted reliable communication channel may be unstable and lack of flow
+control) and it is easier to reproduce FTMB implementation for both academic and
+industrial usage. However, without a good programming abstraction,
+  integrating a user-level TCP implementation like mTCP with replication
+  strategy like FTMB is not a trivial task: mTCP exposes an event-driven
+programming interface like Linux epoll. The application thread using mTCP does
+not sit in the same thread as the mTCP worker thread. But FTMB requires that the
+same worker thread handles both NF packet processing and reliable communication
+to ensure correct replication.
+
+Some of these NFs abandoned DPDK
+  and Netmap, use kernel networking stack to provide reliable communication
+  channel, but sacrifice performance. Some of these NFs use DPDK and Netmap to
+  speed up packet processing and implement their own reliable communication
+  channel, but sacrifice the stable performance and flow control provided by TCP/IP. 
+
+
+
+NFs that Process Events Raised by Lower-level System
+  Components. Example NFs include Snort IDS snort and Bro IDS
+bro. The two IDSes alert potential attacks by matching the flow protocols
+and analyzing flow payloads with an automaton. They can be decoupled into two
+parts: A low-level system is responsible for re-assembling the TCP stream and
+generating events associated with the TCP stream, i.e. connection setup,
+packet re-transmission, and new packet payload. A high-level event driven
+system is responsible for reacting to the events raised by the low-level system,
+i.e. in the case of a fake re-transmission forged by an attacker, the IDS drops the
+flow and raises an alert. These IDSes can be effectively accelerated using mOS
+201546, which substitute the low-level system that raise flow-related
+events. mOS is accelerated using DPDK and is an improved version of mTCP 179773.
+
+The low-level system of these NFs can be accelerated with DPDK. However,
+  the low-level system like mOS is usually targeted to process TCP/IP protocol
+  and can not be extended to process non-TCP/IP protocol.
+
+Summary. Now we briefly discuss the similarities and
+differences of all the discussed NF software.
+
+Similarity. Most of these NFs can be acclerated with DPDK or
+Netmap (except for S-CSCF, which relies on kernel networking stack, but we can
+still accelrate it by porting it to user-level TCP/IP stack like mTCP). Using
+DPDK or Netmap means that the worker threads in these NFs become busy polling
+thread that keeps CPU usage to 100, implying that any system calls entering
+the kernel context may compromise the performance of these NFs.
+
+Difference. These NFs have different working goals and
+operate at different levels. Simple packet processing programs only manipulate
+raw packets. They do not rely on any external services. PRADs needs to do file
+I/O. FTMB and S-CSCF need to communicate with external services. Snort and Bro
+operate on a high-level that reacts to flow-level events raised by a low-level
+system components. These differences lead to diverse implementation details,
+making it hard to find an appropriate abstraction to unify these NFs. 
+
+One Abstraction to Rule Them All
+
+Just like the dedication that physists put into the grand unified theory,
+computer scientists also have been searching for a unified programming
+abstraction that can capture a variety of applications. In terms of NFV, if a
+unified programming abstraction can be found for all the NFs mentioned in
+previous section, programmers can enjoy the following benefits.
+
+First, by optimizing the performance of the library that provides the
+unified programming abstraction, we can improve the performance for a huge variety of
+NFs. There is no need to optimize each NF, which might take a huge amount of
+labour work.
+
+Second, ease NF software development. Once the implementor becomes familiar with
+the programming abstraction, he is able to create different types of NFs without
+learning different programming paradigms or constructing different libraries.
+
+Finally, it makes important research and industrial result easily reproducible,
+as the unified programming abstraction makes people play on the same ground.
+
+Such a programming abstraction is readily accessible for NFV implementors and
+researchers, which is functional reactive programming, especially the subset
+related to futures, promises and continuations.
+
+Futures and Promises
+
+Futures and promises are important terminologies in functional reactive
+programming. A future represents a value that is going to be computed while a
+promise represents the action when the computation is done. This simple
+programming pradigm can easily capture most of the asynchronous programming
+patterns. Let me briefly explain how futures and promises can be mapped to NFs
+discussed in previous sections.
+
+For simple packet processing program, the futures are packets that are going to
+be received where as the promises are packet handler functions.
+
+For PRADs, the futures and promises can be combined to implement efficient file
+system logging. The futures represents the logging action that will log events
+raised by PRADs to the file system. The promises represents post actions when
+the logging is done.
+
+For S-CSCF and FTMB, futures and promises can be used to implement an efficient
+user-space TCP/IP stack. The futures are still packets to be received, but the
+promises become TCP/IP stack handlers.
+
+For Snort and Bro, futures and promises can be used to implement a low-level
+system that raises flow events. Futures flow events that are going to be raised,
+promises are event handlers for these events.
+
+The future-promise programming abstraction can be efficiently implemented with
+a small runtime overhead (i.e. asynchronous C++ library Seastar
+seastar). The programming abstraction can fully bypass the entire kernel,
+even in terms of file logging (with the help of DMA), providing satisfactory
+performance for modern NF software.
+
+Contribution
+
+In this paper, we are going to make the following contributions.
+
+First, we are the first to apply funcional reactive programming as a gereric
+method for building a variety of NF software. We use seastar as the underlying
+library for providing the reactive programming abstraction.
+
+Second, we carry out case studies to show how functional reactive programming
+can be used to construct 4 differnt types of NFs, with diverse requirements.
+
+Finally, we show that the performance and ease of implementation is greatly
+improved by using functional reactive programming. In particular:
+
+We re-implement PRADs using functional reactive programming.
+The resulting PRADs is capable of logging to file system at a throughput of
+several gigabits per second.
+
+We create a new primary-backup replication strategy. The new
+primary-backup strategy is capable of processing packets at line rate. The
+biggest difference between this replication strategy with FTMB is that it does
+not need to checkpoint the master NF instance, greatly simplying the
+implementation effort. It has no replay time and introduces no extra letency
+caused by checkpointting.
+
+We re-implement mOS using our new programming abstraction. We
+also port PRADs to use the new mOS and show that the new PRADs can be several
+times faster than that in the mOS paper 201546.
+
+
+
+
+

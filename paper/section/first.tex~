@@ -1,0 +1,132 @@
+\section{Background}
+
+\subsection{High-speed Network Function}
+
+\subsubsection{Kernel By-passing}
+
+A high-performance software network function must by-pass the
+traditional kernel networking stack when processing network
+packets. Two of the most popular libraries that help network functions
+to by-pass the kernel are Intel DPDK \cite{dpdk} and Netmap. When
+using these two libraries, a large memory area is mapped directly into
+the address space of the network function software. The network
+interface card is configured to put received packets on these memory
+areas through DMA. This enables the network function software to
+directly poll the packets from the memory without introducing
+expensive context switches.
+
+The kernel by-passing advocates zero context switching. The working
+thread of a network function software should keep staying in the
+user-space without entering the kernel-space. It also means that the
+working thread of a network function software should never execute a
+system call.
+
+The kernel by-passing also advocates zero thread scheduling. The
+working thread of a network function software is usually pinned to a
+dedicated CPU core. Different working threads are pinned to different
+CPU cores to prevent the kernel scheduler from scheduling them. This
+also improves the overall system performance.
+
+\subsubsection{Share Nothing Design and Per-core Sharding}
+
+A high-performance software network function is recommended to use a
+share nothing design and shard the received packets to different cores
+with the help of the RSS (receiver side scaling, a special feature of
+NIC). This design choice means that different working threads should
+not access a shared variable. Each working threads maintain its own
+set of data structures when processing the network packets. When
+inter-thread communication is necessary, message passing should be
+used.
+
+\subsubsection{Problems With These Requirements}
+
+These two design choices, primarily the kernel by-passing, seriously
+limit the functionality of some network functions. Since network
+functions could not use the services that are provided by the kernel,
+it becomes hard for them to perform tasks such as file I/O, remote
+message passing and accessing existing services that relies on TCP/IP
+connections (DNS query, using RESTful APIs).
+
+It is possible to introduce a user-space TCP/IP stack when performing
+tasks like remote message passing. However, it is hard to embed a
+TCP/IP stack inside a packet processing loop.
+
+pWe need a better architecture when programming software network
+functions, so that we can not only run a packet processing loop, but
+also perform file I/O, remote message passing and accessing existing
+services that relies on TCP/IP connections.
+
+\subsection{Categorizing Network Functions}
+
+Here I discuss some network functions and high-light some special
+requirement of these network functions.
+
+\subsubsection{NetBricks \cite{199352}, A Simple Packet Processor}
+
+NetBricks is a runtime systems for running multiple user-defined
+network functions. In NetBricks, network functions are described as a
+simple processing graph. Packets are passed in this processing graph
+and processed by each node of the graph. In side the node, a
+user-defined function is used to process the packets. NetBricks is
+implemented using Rust for efficiency.
+
+\subsubsection{PRADS Asset Monitor, Extensive File I/O}
+
+PRADS is a passive real-time asset detection system. It passively
+listen to network traffic and logs information on hosts and services
+it sees on the network. This information can be used to map your
+network, letting you know what services and hosts are active, and can
+be used together with your favorite IDS/IPS setup for "event to
+application" correlation.
+
+One of the most important feature of PRADS is that it needs to log
+important informations to the file systems so that IDS/IPS system like
+Snort can use the information contained in the log file to generate a
+customized configuration files.
+
+Currently, logging in PRADS is performed using traditional system
+calls. This may seriously limit the performance of PRADS.
+
+\subsubsection{mOS \cite{201546}, An Intermediate Layer that Generates Flow Events}
+
+mOS is an intermediate layer that generates flow events. High-level
+network functions can utilize this intermediate layer for efficient
+middlebox implementation.
+
+Inside mOS, mOS analyzes the TCP flows and raise different events,
+such as TCP hand shake, TCP flow terminating. These events are
+delivered to user-defined event handlers. Using these event handlers,
+programmers can efficiently implement network functions, such as IDS
+system like Snort.
+
+\subsubsection{FTMB \cite{sherry2015rollback}, Reliable Communication Between Primary and Backup }
+
+FTMB discusses how to do rollback recovery between primary and backup
+instances. One of the most important step in FTMB is to reliably
+transmit the output result of the primary instance to the backup
+instance. The author of FTMB said that they use a reliable
+transmission to handle this. But they didn't give any details.
+
+\subsubsection{A User-space SDN Switch, Constant Remote Communication with A Controller}
+
+Consider a user-space software defined switch. When the first packet
+of a flow arrives, the switch needs to send an OpenFlow message to the
+controller and waits for the responses.
+
+\subsubsection{Summary}
+
+In summary, a network function software needs more than just
+transforming and manipulating packets in a packet processing loop. It
+needs to perform the following tasks:
+
+First, directly transform and manipulate packets.
+
+Second, perform file I/O to log important events.
+
+Third, query external services. (Querying DNS for IP address. Querying
+database for important information. )
+
+Fourth, fast and reliable communication within a
+cluster. (Primary-backup replication, communicate with a controller)
+
+Fifth, asynchronously react to events raised by the flow.
