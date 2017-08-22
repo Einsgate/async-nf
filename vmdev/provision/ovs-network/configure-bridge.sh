@@ -5,8 +5,8 @@
 # https://wiki.qemu.org/Documentation/vhost-user-ovs-dpdk
 # http://docs.openvswitch.org/en/latest/topics/dpdk/vhost-user/
 
-PMD_CORE_MASK=0xc
-NUM_OF_QUEUE=2
+PMD_CORE_MASK=0x1e
+NUM_OF_QUEUE=4
 
 sudo ovs-vsctl add-br ovsbr0 -- set bridge ovsbr0 datapath_type=netdev
 
