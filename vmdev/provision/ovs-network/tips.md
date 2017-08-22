@@ -40,4 +40,7 @@ This is enabled by:
        sudo aa-complain /usr/sbin/libvirtd
        sudo aa-complain /etc/apparmor.d/libvirt/*
 
-6. Then we can launch the VM.
+7. Configure the interfaces in the vm using 
+ethtool -L eth0 combined $QUEUE_NUMBER
+
+8. Then we can launch the VM.
