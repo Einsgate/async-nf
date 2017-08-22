@@ -1,27 +1,10 @@
-Several references for creating a DPDK virtio network.
+Several references for creating a ovs-dpdk network.
 
-1. Build dpdk 17.02 using the provided dpdk-build.sh script.
+1. Build dpdk first using the provided script in /provision
 
-2. Use http://fast.dpdk.org/doc/perf/DPDK_17_02_Intel_virtio_performance_report.pdf as the basic setup reference.
+2. Build ovs using the provided script in /provision/ovs-network
 
-3. Launch vhost-switch, we provide a scipt for launching vhost-switch
-
- /path-to-dpdk/examples/vhost \
- -c 0x1c00 \
- -n 4 \
- --socket-mem 2048 \
- -- -p 0x1 \
- --mergeable 1 \
- --vm2vm 1 2 \
- --tso 1 \
- --tx-csum 1 \
- --dequeue-zero-copy \
- --socket-file ./first-vhost-net \
- --socket-file ./second-vhost-net1
-
-Note: The first core specified in the core mask is used by the master process and does no work.
-The rest of the cores will actually do the job and keeps busy. The created vhost-net device are
-round-robined by all the worker threads.
+3. Create a sample ovs bridge using the provided script in /provision/ovs-network
 
 4. Then go on to configure the virtual machine.
 
@@ -29,14 +12,22 @@ round-robined by all the worker threads.
    to the domain tag.
 
    4.2 Add
-<qemu:commandline>
-  <qemu:arg value='-chardev'/>
-  <qemu:arg value='socket,id=char0,path=/home/net/asyn-nf/provision/virtio-network/vhost-net1'/>
-  <qemu:arg value='-netdev'/>
-  <qemu:arg value='type=vhost-user,id=netdev0,chardev=char0,vhostforce'/>
-  <qemu:arg value='-device'/>
-  <qemu:arg value='virtio-net-pci,netdev=netdev0,mac=52:54:00:00:00:01'/>
-</qemu:commandline>
+   Note: queues should be equal with the number of PMD used by ovs-dpdk.
+   Also Note: The vectors should be 2*queues+2
+   <qemu:commandline>
+      <qemu:arg value='-chardev'/>
+      <qemu:arg value='socket,id=char0,path=/usr/local/var/run/openvswitch/vhost-user1'/>
+      <qemu:arg value='-netdev'/>
+      <qemu:arg value='type=vhost-user,id=netdev0,chardev=char0,vhostforce,queues=2'/>
+      <qemu:arg value='-device'/>
+      <qemu:arg value='virtio-net-pci,netdev=netdev0,mac=52:54:00:00:00:01,mq=on,vectors=6'/>
+      <qemu:arg value='-object'/>
+      <qemu:arg value='memory-backend-file,id=mem,size=2048M,mem-path=/mnt/huge,share=on'/>
+      <qemu:arg value='-numa'/>
+      <qemu:arg value='node,memdev=mem'/>
+      <qemu:arg value='-mem-prealloc'/>
+    </qemu:commandline>
+						
 
 5. Change the user and group to booth root for libvirt.
 Reference: http://docs.openvswitch.org/en/latest/topics/dpdk/vhost-user/
