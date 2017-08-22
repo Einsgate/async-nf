@@ -8,6 +8,8 @@ HUGE_PAGE_SIZE=1024
 
 # DPDK deivce identifier
 DPDK_DEVICE_ONE=00:0a.0
+DEVICE_NAME_ONE=ens10
+QUEUES_ONE=2
 
 # Reserve huge pages
 echo "echo $HUGE_PAGE_SIZE > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages" > .echo_tmp
@@ -24,6 +26,9 @@ grep -s '/mnt/huge' /proc/mounts > /dev/null
 if [ $? -ne 0 ] ; then
     sudo mount -t hugetlbfs nodev /mnt/huge
 fi
+
+# Update device
+# sudo ethtool -L $DPDK_NAME_ONE combined $QUEUES_ONE
 
 # Load uio_pci_generic
 sudo modprobe uio_pci_generic
