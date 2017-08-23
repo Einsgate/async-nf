@@ -19,7 +19,7 @@ ninja
 # clone async-nf and build a workable dpdk
 cd ~/
 git clone https://github.com/duanjp8617/async-nf.git
-cd ./async-nf/vmdev/provision
+cd ./async-nf/vmdev/
 ./dpdk-build.sh
 
 # After scp this file to the virtual machine, boot

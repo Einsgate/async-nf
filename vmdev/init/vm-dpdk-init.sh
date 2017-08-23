@@ -1,6 +1,6 @@
 #!/bin/sh
 
-DPDK_DIR=/home/net/async-nf/vmdev/provision/dpdk
+DPDK_DIR=/home/net/async-nf/vmdev/dpdk
 HUGE_PAGE_FILE=/sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
 
 # 2M huge page size and 1024 huge pages equals 2G/2048M huge pages
