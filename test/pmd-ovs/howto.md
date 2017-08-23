@@ -7,6 +7,9 @@
    3.1, Add <domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
    to the domain tag.
 
+   3.3, Bind the vCPUs, add cpuset tags to vcpus
+   <vcpu placement='static' cpuset='5-9'>5</vcpu>
+
    3.2 Add
    Note: queues should be equal with the number of PMD used by ovs-dpdk.
    Also Note: The vectors should be 2*queues+2
@@ -14,11 +17,11 @@
       <qemu:arg value='-chardev'/>
       <qemu:arg value='socket,id=char0,path=/usr/local/var/run/openvswitch/vhost-user1'/>
       <qemu:arg value='-netdev'/>
-      <qemu:arg value='type=vhost-user,id=netdev0,chardev=char0,vhostforce,queues=2'/>
+      <qemu:arg value='type=vhost-user,id=netdev0,chardev=char0,vhostforce,queues=4'/>
       <qemu:arg value='-device'/>
-      <qemu:arg value='virtio-net-pci,netdev=netdev0,mac=52:54:00:00:00:01,mq=on,vectors=6'/>
+      <qemu:arg value='virtio-net-pci,netdev=netdev0,mac=52:54:00:00:00:01,mq=on,vectors=10'/>
       <qemu:arg value='-object'/>
-      <qemu:arg value='memory-backend-file,id=mem,size=2048M,mem-path=/mnt/huge,share=on'/>
+      <qemu:arg value='memory-backend-file,id=mem,size=4096M,mem-path=/mnt/huge,share=on'/>
       <qemu:arg value='-numa'/>
       <qemu:arg value='node,memdev=mem'/>
       <qemu:arg value='-mem-prealloc'/>
@@ -39,7 +42,7 @@ This is enabled by:
 5. In the two VMs, execute ./vm-dpdk-init.sh
 
 6. Then run test-pmd using the command
-sudo /home/net/async-nf/vmdev/provision/dpdk/app/test-pmd/testpmd 0x1F -n 4 --socket-mem 2048 -- --burst=64 -i --txqflags=0xf00 --rxq=4 --txq=4 --nb-cores=4
+sudo /home/net/async-nf/vmdev/dpdk/app/test-pmd/testpmd 0x1F -n 4 --socket-mem 2048 -- --burst=64 -i --txqflags=0xf00 --rxq=4 --txq=4 --nb-cores=4
 
 On the receive machine, run the following commands:
 set stat_qmap rx 0 0 0
