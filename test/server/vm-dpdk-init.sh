@@ -3,8 +3,8 @@
 DPDK_DIR=/home/net/async-nf/vmdev/dpdk
 HUGE_PAGE_FILE=/sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
 
-# 2M huge page size and 1024 huge pages equals 2G/2048M huge pages
-HUGE_PAGE_SIZE=1024
+# 2M huge page size and 1024 huge pages equals 4G huge pages
+HUGE_PAGE_SIZE=2048
 
 # DPDK deivce identifier
 DPDK_DEVICE_ONE=00:0a.0
