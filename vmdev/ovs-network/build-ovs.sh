@@ -4,7 +4,7 @@
 
 # Require autoreconf, need apt-get install autoconf
 
-DPDK_BUILD=/home/net/async-nf/vmdev/provision/dpdk/build
+DPDK_BUILD=/home/net/async-nf/vmdev/dpdk/build
 
 git clone -b branch-2.7 https://github.com/openvswitch/ovs.git
 

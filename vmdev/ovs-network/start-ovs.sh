@@ -5,7 +5,7 @@
 # http://docs.openvswitch.org/en/latest/intro/install/dpdk/
 
 CORE_MASK=0x1f
-PMD_CORE_MASK=0x1e
+#PMD_CORE_MASK=0x1e
 MEM=2048
 HUGE_PAGE_DIR=/mnt/huge
 
@@ -27,7 +27,7 @@ sudo ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-socket-mem=$MEM
 
 sudo ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-hugepage-dir=$HUGE_PAGE_DIR
 
-sudo ovs-vsctl --no-wait set Open_vSwitch . other_config:pmd-cpu-mask=$PMD_CORE_MASK
+#sudo ovs-vsctl --no-wait set Open_vSwitch . other_config:pmd-cpu-mask=$PMD_CORE_MASK
 
 sudo ovs-vsctl --no-wait set Open_vSwitch . other_config:dpdk-init=true
 

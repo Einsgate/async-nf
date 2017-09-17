@@ -11,6 +11,10 @@ make -j8
 export RTE_SDK=$PWD
 export RTE_TARGET=build
 
-cd ./examples
+# cd ./examples
+
+# make -j8
+
+cd ./app/test-pmd
 
 make -j8
