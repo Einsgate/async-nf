@@ -1,0 +1,21 @@
+\section{Motivations}
+
+Our primary motivation for this paper comes from a recent advancement in building stateless network function \cite{}. Stateless network function has a strong demand for accessing external services, as it stores important flow states, including per-flow state or shared state, in a key-value store called RamCloud \cite{}. In the most extreme cases, stateless network function needs to access the key-value store for every other packet that it processes \cite{}.
+
+However, stateless network function is implemented in a blocking synchronized fashion: whenever the worker thread needs to update the 
+
+\subsection{Improving Stateless Network Function}
+
+Though some of the existing middleboxes have extensive use of asynchronous services \cite{}, our primary motivation for this paper comes from a recent advancement in building stateless network function \cite{}.
+
+Stateless network function \cite{} stores important
+
+Stateless network function \cite{} achieves dynamic scaling and fault tolerance, two of the most important topics that are active explored by network middlebox research community, by delegating the storing of important flow states to a reliable, high-performance key-value store called RamCloud \cite{}. By separating the state storing from packet processing, stateless network function achieves dynamic scaling and fault tolerance in a much simplified fashion.
+
+\subsubsection{Limitations of Stateless Network Function}
+
+Stateless network function needs to frequently access the external key-value store.
+
+The current implementation of stateless network function still suffers from several limitations.
+
+\textbf{Blocking synchronized architecture.}
