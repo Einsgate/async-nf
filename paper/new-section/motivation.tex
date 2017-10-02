@@ -1,21 +1,78 @@
 \section{Motivations}
 
-Our primary motivation for this paper comes from a recent advancement in building stateless network function \cite{}. Stateless network function has a strong demand for accessing external services, as it stores important flow states, including per-flow state or shared state, in a key-value store called RamCloud \cite{}. In the most extreme cases, stateless network function needs to access the key-value store for every other packet that it processes \cite{}.
+Our primary motivation for this paper comes from a recent advancement in building stateless network function \cite{}. Stateless network function \cite{} achieves dynamic scaling and fault tolerance, two of the most important topics that are active explored by network middlebox research community, by storing important flow states, including per-flow state or shared state, in a key-value store called RamCloud \cite{}. In the most extreme cases, stateless network function needs to access the key-value store for every other packet that it processes \cite{}.
 
-However, stateless network function is implemented in a blocking synchronized fashion: whenever the worker thread needs to update the 
+Even though StatelessNF is probably the middlebox that has the most strigent requirement for asynchronous data store accessing, StatlelessNF is currently implemented in a blocking synchronized fashion: whenever the worker thread needs to access the data store, the worker thread has to be blocked and wait for the access to finish. A sample code of a stateless IPS is shown in figure~\ref{}.
 
-\subsection{Improving Stateless Network Function}
+\begin{figure}[!t]
+	\begin{subfigure}[b]{\columnwidth}
+		\centering
+ 	 	\lstset{language=C, numbers=left, showspaces=false,
+    		showstringspaces=false, tabsize=2, breaklines=true,
+    		xleftmargin=5.0ex, basicstyle=\scriptsize,
+		}
 
-Though some of the existing middleboxes have extensive use of asynchronous services \cite{}, our primary motivation for this paper comes from a recent advancement in building stateless network function \cite{}.
+		\begin{lstlisting}
+void stateless_ips(packet* pkt){
+  flow_tuple tp = extract_flow_tuple(pkt);
 
-Stateless network function \cite{} stores important
+  if(pkt_is_tcp_syn(pkt)){
+    automaton_state a_st = init_automaton_state();
+    sync_write_db(tp, a_st);
+  }
+  else{
+    automaton_state a_st = sync_read_db(tp);
+    char* next_byte = get_next_payload_byte(pkt);
 
-Stateless network function \cite{} achieves dynamic scaling and fault tolerance, two of the most important topics that are active explored by network middlebox research community, by delegating the storing of important flow states to a reliable, high-performance key-value store called RamCloud \cite{}. By separating the state storing from packet processing, stateless network function achieves dynamic scaling and fault tolerance in a much simplified fashion.
+    while(next_byte != nullptr){
+      a_st = process_with_automaton(next_byte, a_st);
+    }
 
-\subsubsection{Limitations of Stateless Network Function}
+    sync_write_db(tp, a_st);
+    send_pkt(pkt);
+  }
+}
+		\end{lstlisting}
+		\caption{Blocking synchronous IPS implementation from StatelessNF.}
+		\label{fig:api}
+    \end{subfigure}\hfill
+	\begin{subfigure}[b]{\columnwidth}
+		\centering
+ 	 	\lstset{language=C++, numbers=left, showspaces=false,
+    		showstringspaces=false, tabsize=2, breaklines=true,
+    		xleftmargin=5.0ex, basicstyle=\scriptsize,
+		}
 
-Stateless network function needs to frequently access the external key-value store.
+		\begin{lstlisting}
+void on_first_pkt(context* ctx, packet* pkt){
+  flow_tuple tp = extract_flow_tuple(pkt);
+  automaton_state a_st = init_automaton_state();
 
-The current implementation of stateless network function still suffers from several limitations.
+  async_write_db_with_cb(ctx, tp, a_st, subsequent_pkt_read);
+}
 
-\textbf{Blocking synchronized architecture.}
+void subsequent_pkt_read(context* ctx, packet* pkt){
+  flow_tuple tp = extract_flow_tuple(pkt);
+  async_read_db_with_cb(ctx, tp, subsequent_pkt_write);
+}
+
+void subsequent_pkt_write(context* ctx, packet* pkt, automaton_state* a_st){
+  char* next_byte = get_next_payload_byte(pkt);
+
+  while(next_byte != nullptr){
+    a_st = process_with_automaton(next_byte, a_st);
+  }
+
+  async_write_db_with_cb(ctx, tp, a_st, call_send_pkt);
+}
+
+void call_send_pkt(packet* pkt, context* ctx){
+  send_pkt(pkt);
+  update_ctx(ctx, subsequent_pkt_read);
+}
+		\end{lstlisting}
+		\caption{A callback based implementation for stateless IPS.}\label{fig:example}
+	\end{subfigure}
+\caption{The API and implementation of an example NF module.}
+\label{fig:base-class}
+\end{figure}
