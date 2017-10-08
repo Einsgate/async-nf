@@ -8,6 +8,7 @@ HUGE_PAGE_SIZE=512
 
 # DPDK deivce identifier
 DPDK_DEVICE_ONE=00:0a.0
+DPDK_DEVICE_TWO=00:0b.0
 
 # Reserve huge pages
 echo "echo $HUGE_PAGE_SIZE > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages" > .echo_tmp
@@ -32,6 +33,7 @@ sudo insmod $DPDK_DIR/build/kmod/igb_uio.ko
 
 # Bind dpdk device
 sudo $DPDK_DIR/usertools/dpdk-devbind.py -b igb_uio $DPDK_DEVICE_ONE
+sudo $DPDK_DIR/usertools/dpdk-devbind.py -b igb_uio $DPDK_DEVICE_TWO
 
 # Then run test-pmd using the command
 # sudo /home/net/async-nf/vmdev/provision/dpdk/app/test-pmd/testpmd 0x1F -n 4 --socket-mem 2048 -- --burst=64 -i --txqflags=0xf00 --rxq=4 --txq=4 --nb-cores=4
