@@ -106,3 +106,12 @@
     "rebalance_interval": 0
   }
 }
+
+/*
+server_info: {"concurrent_read":false, "concurrent_write":false, "partitions":[[0,0],[1,1],[2,2],[3,3],[4,4],[5,5],[6,6],[7,7],[8,8],[9,9]], "endpoints":[[0,0,"3c:fd:fe:06:09:62","10.0.0.2",0],[1,1,"3c:fd:fe:06:09:62","10.0.0.2",1],[2,2,"3c:fd:fe:06:09:62","10.0.0.2",2],[3,3,"3c:fd:fe:06:09:62","10.0.0.2",3],[4,4,"3c:fd:fe:06:09:62","10.0.0.2",4],[5,5,"3c:fd:fe:06:09:62","10.0.0.2",5],[6,6,"3c:fd:fe:06:09:62","10.0.0.2",6],[7,7,"3c:fd:fe:06:09:62","10.0.0.2",7],[8,8,"3c:fd:fe:06:09:62","10.0.0.2",8],[9,9,"3c:fd:fe:06:09:62","10.0.0.2",9]]}
+
+A server configured in this way would have a server info like this. Some explanations:
+"partitions" : [[partition_id, lcore_id]]
+"endpoints" : [[endpoint_id, lcore_id, port_mac_address, port_ipv4_address, port_udp_port]]
+
+*/
