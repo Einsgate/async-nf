@@ -13,7 +13,7 @@ make -j
 
 cd ../
 
-git clone https://github.com/efficient/mica2.git
+git clone https://github.com/duanjp8617/mica2.git
 
 cd mica2/build
 
