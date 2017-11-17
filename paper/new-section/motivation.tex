@@ -1,8 +1,8 @@
 \section{Motivations}
 
-Our primary motivation for this paper comes from a recent advancement in building stateless network function \cite{}. Stateless network function \cite{} achieves dynamic scaling and fault tolerance, two of the most important topics that are active explored by network middlebox research community, by storing important flow states, including per-flow state or shared state, in a key-value store called RamCloud \cite{}. In the most extreme cases, stateless network function needs to access the key-value store for every other packet that it processes \cite{}.
+Our primary motivation for this paper comes from a recent advancement in building stateless network function. Stateless network function achieves dynamic scaling and fault tolerance, two of the most important topics that are active explored by network middlebox research community, by storing important flow states, including per-flow state or shared state, in a key-value store called RamCloud. In the most extreme cases, stateless network function needs to access the key-value store for every other packet that it processes.
 
-Even though StatelessNF is probably the middlebox that has the most strigent requirement for asynchronous data store accessing, StatlelessNF is currently implemented in a blocking synchronized fashion: whenever the worker thread needs to access the data store, the worker thread has to be blocked and wait for the access to finish. A sample code of a stateless IPS is shown in figure~\ref{}.
+Figure~\ref{fig:base-class} shows two implementation of a IPS system in StatelessNF. We can see that NetStar has an easier implementation, with smaller number of lines of code, preserved control flow, smaller number of defined functions, and better error handling code.
 
 \begin{figure}[!t]
 	\begin{subfigure}[b]{\columnwidth}
@@ -13,27 +13,32 @@ Even though StatelessNF is probably the middlebox that has the most strigent req
 		}
 
 		\begin{lstlisting}
-void stateless_ips(packet* pkt){
-  flow_tuple tp = extract_flow_tuple(pkt);
-
-  if(pkt_is_tcp_syn(pkt)){
-    automaton_state a_st = init_automaton_state();
-    sync_write_db(tp, a_st);
-  }
-  else{
-    automaton_state a_st = sync_read_db(tp);
-    char* next_byte = get_next_payload_byte(pkt);
-
-    while(next_byte != nullptr){
-      a_st = process_with_automaton(next_byte, a_st);
-    }
-
-    sync_write_db(tp, a_st);
-    send_pkt(pkt);
-  }
-}
+      class flow_context{
+        async_flow<TCPType> _af;
+        net::packt _cur_pkt;
+        future<> run(){
+          _af.on_new_packet().then([]{
+            _cur_pkt = _af.get_packet();
+            if(!_cur_pkt){
+              return make_ready_future<>();
+             }
+            return mica_ready(flow_key);
+          }).then([this](mica_query_response automaton state){
+            auto new_state = automaton.check(_cur_pkt, state);
+            if(new_state == alarm){
+              drop(_cur_pkt);
+              return make_ready_future<>();
+             }
+             else{
+               return mica_write(flow_key, new_state);
+             }
+          }).then([](mica_query_response){
+            return run();
+          });
+        }
+       }
 		\end{lstlisting}
-		\caption{Blocking synchronous IPS implementation from StatelessNF.}
+		\caption{IPS implementation based on NetStar.}
 		\label{fig:api}
     \end{subfigure}\hfill
 	\begin{subfigure}[b]{\columnwidth}
@@ -76,3 +81,18 @@ void call_send_pkt(packet* pkt, context* ctx){
 \caption{The API and implementation of an example NF module.}
 \label{fig:base-class}
 \end{figure}
+
+\section{The Asynchronous Flow Abstraction}
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=\columnwidth]{figure/async-flow.pdf}
+  \vspace{-2mm}
+  \caption{The general-purpose asynchronous flow abstraction used in NetStar.}
+  \label{fig:async-flow}
+  \vspace{-6mm}
+\end{figure}
+
+Figure~\ref{fig:async-flow} illustrates our general purpose asynchronous flow abstraction used in NetStar. It is designed to process and inspect connection-oriented flows. It consists of four pluggable part. The client side inspection module aims to mimics the client protocol state. The client side asynchronous loop executes various asynchronous operations. The server side inspection module mimics the server side protocol state while the server side asynchronous loop executes various asynchronous operations as well. The server side asynchronous loop is capable of reconstructing the protocol payload (TCP payload) and analyzing the TCP pay load.
+
+The four parts are pluggable. Programmer can disable uninterested part, making it fully modular. It is designed by combining the Seastar server side programming interface with mOS TCP/IP monitoring sock. 
