@@ -1,0 +1,6 @@
+It seems that fdir does not work on our x710 NIC...
+
+I have nothing to do but to replace fdir with RSS.
+
+Some important code:
+seastar/net/tcp.hh line 790-795 for how to transplate the 5-tuple into cpu id

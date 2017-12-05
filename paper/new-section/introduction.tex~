@@ -1,0 +1,14 @@
+\section{Introduction}
+
+In recent years, the research community has witnessed the quick development of
+software-based middleboxes, due to the trend of network function virtualization
+(NFV). NFV advocates moving hardware-based middleboxes away from critical
+network paths and replaces them with software-based middleboxes running in
+virtual machines or containers, to facilitate the deployment and provisioning of
+important network services. That is to say, building high-performance software
+middleboxes has become one of the core tasks for networking community.
+
+
+
+
+

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-git clone -b local-17.02 https://github.com/duanjp8617/dpdk.git
+git clone -b local-17.05 https://github.com/duanjp8617/dpdk.git
 
 cd ./dpdk
 
